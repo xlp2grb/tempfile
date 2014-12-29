@@ -1,0 +1,13 @@
+gnuplot << EOF
+set term png
+set output "white-standard.png"
+set xlabel "mini-gwac white mag"
+set ylabel "Standard R2 mag (USNO B1.0)"
+set grid
+set key left
+f(x)=a*x+b
+fit f(x) 'newOT.cat' u 3:6 via a,b  
+plot [14:5][14:5]'newOT.cat' u 3:6 t 'R2',f(x)
+quit
+EOF
+

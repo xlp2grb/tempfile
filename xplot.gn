@@ -1,0 +1,10 @@
+set term png
+set output "refall.png"
+set xlabel "RA deg"
+set ylabel "DEC deg"
+plot 'refall.txt' u 1:2 
+
+set output "refstand.png"
+set xlabel "RA deg"
+set ylabel "DEC deg"
+plot 'refstand.txt' u 1:2

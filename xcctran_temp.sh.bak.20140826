@@ -1,0 +1,214 @@
+#!/bin/bash
+#author by xlp
+#transfrom the sky coords to xy coords with cctran 
+#to crossmatch the xy coords between sex output and cctran output
+#to derive the real xy coords and its sky coords 
+#the final result is named as GwacStandall.cat and refcom1d.cat
+#update file should be update according to the different sky region.
+#Update at 20130108 by xlp
+#======================================
+if [ $# -ne 5 ]
+then
+        echo "usage:command like this"
+	echo "./xcctran.sh input_RaDecfile_all input_RaDecfile_stand database_accfile fitfile G1P1"
+	echo "output: *_allxy *_standxy"
+	echo "cat ../result/PointName.cat ==== you could find the alias for any skyfiled" 
+        exit 0
+fi
+#=====================================
+DIR_data=`pwd`
+result_dir=$HOME/tempfile/result
+RaDecfileAll=$1
+RaDecfileStand=$2
+Accfile=$3
+FITFILE=$4
+skyfield=$5
+
+DETECT_TH=3 
+maglimitSigma=5 
+
+echo $RaDecfileAll $RaDecfileStand $Accfile $FITFILE $skyfield
+#=====================================
+gnuplot xplot.gn
+#=====================================
+XYfilecctranAll=`echo $RaDecfileAll"_allxy"`
+XYfilecctranStand=`echo $RaDecfileStand"_standxy"`
+
+if test -f $XYfilecctranAll
+then
+	rm -rf $XYfilecctranAll
+fi
+if test -f $XYfilecctranStand
+then
+        rm -rf $XYfilecctranStand
+fi
+rm -rf refcom_subbg.fit
+#======================================
+OUTPUT=`echo $FITFILE | sed 's/\.fit/.fit.sex/'`
+OUTPUT_new=`echo $FITFILE | sed 's/\.fit/.fit.sex_xy/'`
+skyfield_cat=`echo $skyfield"_update.cat"`
+echo $skyfield_cat $skyfield
+#imagetmp=`echo $FITFILE | sed 's/\.fit/.fit.mattmp/'`
+sex $FITFILE  -c  daofind.sex  -CATALOG_NAME $OUTPUT -DETECT_THRESH $DETECT_TH -ANALYSIS_THRESH $DETECT_TH
+#cat $OUTPUT | awk '{if($4==0) print($1,$2,$3)}' >allres0
+cat $OUTPUT | awk '{print($1,$2,$3)}' >allres0
+#cat $OUTPUT | sort -n -r -k 3 | awk '{if($4==0 && ($3)-$5/($6)>1000 )print($1,$2,$3)}' | column -t >refcom1d.cat
+#============================================================
+        Npixel=`gethead $FITFILE "NAXIS1"`
+        if [ $Npixel -gt 1024 ] # greater than 1k
+        then
+                Nbstar=10
+                Ng=2
+        else
+                Nbstar=6
+                Ng=0
+        fi
+        Nb=`echo $Npixel $Nbstar | awk '{print(int($1/$2))}'`
+#========================================================
+	rm -rf refcom1d.cat refcom2d.cat
+#get the bright objects for the first geomap with linear correction 
+       for((i=$Ng;i<($Nbstar-$Ng);i++))
+        do
+                for((j=$Ng;j<($Nbstar-$Ng);j++))
+                do
+                        cat allres0 | awk '{if( (nb*i)<$1 && $1<=(nb*(i+1)) &&    (nb*j)<$2 && $2<=(nb*(j+1))) print($1,$2,$3)}' i=$i j=$j nb=$Nb |sort -n -r -k 3 | head -1 | column -t >>refcom1d.cat
+                done
+        done
+        # for the 1d geomap with trinangle
+
+#=======================================================
+        Nbstar=30
+        Nb=`echo $Npixel $Nbstar | awk '{print(int($1/$2))}'`
+        for((i=0;i<$Nbstar;i++))
+        do
+                for((j=0;j<$Nbstar;j++))
+                do
+                        cat allres0 | awk '{if( (nb*i)<$1 && $1<=(nb*(i+1)) &&    (nb*j)<$2 && $2<=(nb*(j+1))) print($1,$2,$3)}' i=$i j=$j nb=$Nb | sort -n -r -k 3 | head -1 | column -t >>refcom2d.cat
+                done
+        done
+        #for second geomap with tolerence
+
+echo $RaDecfileAll $XYfilecctranAll
+echo "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
+#=======================================
+cd $HOME/iraf
+cp -f login.cl.old login.cl
+echo noao >> login.cl
+echo digiphot >> login.cl
+echo image >> login.cl
+echo imcoords >>login.cl
+echo "cd $DIR_data" >> login.cl
+echo flpr >> login.cl
+echo "imarith( \"$FITFILE\",\"-\",\"bak.fit\",\"refcom_subbg.fit\")" >> login.cl
+echo "cctran(input=\"$RaDecfileAll\",output=\"$XYfilecctranAll\", database=\"$Accfile\",solutions=\"first\", geometry=\"geometric\",forward-,lngunits=\"degrees\",latunits=\"degrees\",projection=\"tan\",xcolumn=1,ycolumn=2, lngform=\"%12.9f\",latform=\"%12.9f\",min_sigdigits=7) " >>login.cl
+echo logout >> login.cl
+cl < login.cl >xlogfile.log
+cd $HOME/iraf
+cp -f login.cl.old login.cl
+cd $DIR_data
+wc $XYfilecctranAll
+#======================================
+echo $RaDecfileStand $XYfilecctranStand
+cd $HOME/iraf
+cp -f login.cl.old login.cl
+echo noao >> login.cl
+echo digiphot >> login.cl
+echo image >> login.cl
+echo imcoords >>login.cl
+echo "cd $DIR_data" >> login.cl
+echo flpr >> login.cl
+echo "cctran(input=\"$RaDecfileStand\",output=\"$XYfilecctranStand\", database=\"$Accfile\",solutions=\"first\", geometry=\"geometric\",forward-,lngunits=\"degrees\",latunits=\"degrees\",projection=\"tan\",xcolumn=1,ycolumn=2,lngform=\"%12.9f\",latform=\"%12.9f\",min_sigdigits=7) " >>login.cl
+echo logout >> login.cl
+cl < login.cl >xlogfile.log 
+cd $HOME/iraf
+cp -f login.cl.old login.cl
+cd $DIR_data
+wc $XYfilecctranStand
+#======================================
+wc $XYfilecctranStand
+rm -rf SameStar.cat newOT.cat
+cat $XYfilecctranStand | awk '{if($1>0 && $2>0 && $1<3056 && $2<3056 && $3>0) print($1,$2,$3)}' | sort -n -r -k 3 | head -1000 >GwacStandall_mag.cat #R1mag, $3 is R1mag, $4 is R2mag
+cat $OUTPUT | awk '{print($1,$2,$7)}' | sort -n -k 3 >image.cat
+./xCrossImageStand #output is the SameStar.cat
+if test -s SameStar.cat
+then
+	sum=0
+	i=0
+	for R1deltamag in `cat SameStar.cat | awk '{print($9)}'`
+	do
+		sum1=`echo $sum $R1deltamag | awk '{print($1+$2)}'`
+		sum=`echo $sum1`
+		j=`echo $i | awk '{print($1+1)}'`
+		i=`echo $j`
+	done	
+	averagedeltamag=`echo $sum $i | awk '{print($1/$2)}'`
+	echo "average for the delta magnitude:" $averagedeltamag
+	cat $OUTPUT | grep -v "INDEF" | awk '{print($1,$2,$3,$4,$5,$6,$7+averagedeltamag,$8,$9,$10)}' averagedeltamag=$averagedeltamag >temp 
+	mv temp $OUTPUT #flux calibration finished
+	cat SameStar.cat | awk '{print($5,$6,$7+averagedeltamag)}' averagedeltamag=$averagedeltamag >GwacStandall_mag.cat #flux calibration file
+	#========================
+	#this part is not right
+	cat  $OUTPUT | awk '{if($8<0.2)print($7+2.5*log($3*DETECT_TH/2/$5/maglimitSigma)/log(10))}' DETECT_TH=$DETECT_TH maglimitSigma=$maglimitSigma >refcom_maglimit.cat  #3.16 is sqrt(area) #rude limit magnitude, area=4 for aperature phot
+	#=========================
+	for R1deltamag in `cat refcom_maglimit.cat | awk '{print($1)}'`
+        do
+                sum1=`echo $sum $R1deltamag | awk '{print($1+$2)}'`
+                sum=`echo $sum1`
+                j=`echo $i | awk '{print($1+1)}'`
+                i=`echo $j`
+        done
+        averagelimit=`echo $sum $i | awk '{print($1/$2)}'`
+        echo "average for the limit magnitude:" $averagelimit
+	echo $averagelimit >refcom_avermaglimit.cat
+
+fi
+#======================================
+cp refcom2d.cat GwacStandall.cat
+#======================================
+paste $XYfilecctranAll $RaDecfileAll |  awk '{if($1>0 && $1<3056 && $2>0 && $2<3056) print($1,$2,$5)}'>refcom3d_noupdate0.cat  # R1mag, $5 is R1mag, $6 is R2mag
+cp refcom3d_noupdate0.cat refcom3d.cat
+cat $OUTPUT | awk '{print($1,$2,$7)}' >image.cat
+./xCrossImageRefcom3d #output is the newOT.cat
+cat newOT.cat refcom3d.cat | column -t >temp
+mv temp refcom3d.cat
+cp refcom3d.cat refcom3d_noupdate.cat
+rm -rf image.cat newOT.cat
+#=====================================
+date >time1
+month=`cat time1 | awk '{print($2)}'`
+day=`cat time1 | awk '{print($3)}'`
+timex=`cat time1 | awk '{print($4)}'`
+newname3d=`echo "refcom3d.cat"_$month"_"$day"_"$timex`
+newname1d=`echo "refcom1d.cat"_$month"_"$day"_"$timex`
+standobj=`echo "GwacStandall.cat"_$month"_"$day"_"$timex`
+#mv $result_dir/refcom1d.cat $result_dir/$newname1d
+#mv $result_dir/refcom3d.cat $result_dir/$newname3d
+#mv $result_dir/GwacStandall.cat $result_dir/$standobj
+#=================================================
+
+if test -r $skyfield
+then
+	:
+else
+	mkdir $skyfield
+fi
+#skyfield_dir=`echo $skyfield`
+#mv refcom3d_noupdate.cat refcom.fit refcom1d.cat GwacStandall.cat refcom_subbg.fit $skyfield_dir
+touch noupdate.flag
+mv refcom3d_noupdate*.cat noupdate.flag refall.png refstand.png refcom.fit refcom.acc refcom1d.cat refcom3d.cat GwacStandall.cat GwacStandall_mag.cat refcom_avermaglimit.cat refcom_subbg.fit $skyfield
+#echo $skyfield_dir"/"$skyfield_cat
+#skyfieldfull=`echo $skyfield_dir"/"$skyfield_cat`
+
+#if test -r $skyfieldfull
+#then
+#	cat $skyfield_dir/refcom3d_noupdate.cat $skyfieldfull >$skyfield_dir/refcom3d.cat
+#	echo "temp undate finished"
+#else 
+#	cd $skyfield_dir
+#	cp refcom3d_noupdate.cat refcom3d.cat
+#	cp $skyfield_dir/refcom3d.cat $skyfield_dir
+#	echo "New temp catalog is produced but"
+#	echo "there is no " $skyfield_cat "in" $skyfield_dir "directory"	
+#fi
+cd $DIR_data 
+rm -rf time1 refstand.txt_standxy *.png  refcom_maglimit.cat refcom.fit.sex noupdate.flag refstand.txt refcom2d.cat bak.fit GwacStandall.cat  refcom_maglimit.cat refcom_avermaglimit.cat GwacStandall_mag.cat refall.txt refall.txt_allxy refcom.acc allres0 
