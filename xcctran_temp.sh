@@ -141,6 +141,7 @@ Num_refcom3d0=`wc -l refcom3d_noupdate0.cat | awk '{print($1)}'`
 ratio_refcom3d0_pre=`echo $Num_refcom3d0 $Num_IdeaCatalog | awk '{print($1/$2)}'`
 echo $ratio_refcom3d0_pre
 deltamag_decrease=0
+
 while [ `echo " $ratio_refcom3d0_pre > $ratio_num " | bc ` -eq 1 ]; do
         echo "deltamag_decrease is: " $deltamag_decrease  
         bb=`echo $deltamag_decrease | awk '{print($1+0.2)}'`
@@ -150,6 +151,8 @@ while [ `echo " $ratio_refcom3d0_pre > $ratio_num " | bc ` -eq 1 ]; do
         Num_refcom3d0=`wc -l refcom3d_noupdate0.cat | awk '{print($1)}'`
         ratio_refcom3d0_pre=`echo $Num_refcom3d0 $Num_IdeaCatalog | awk '{print($1/$2)}'`
 done
+echo "Initial_limit= "$Initial_limit
+echo "Final limit from Astronomy catalog is ( $Initial_limit  -  $deltamag_decrease )"
 ##====================
 #echo $ratio_refcom3d0_pre 
 #if [ `echo " $ratio_refcom3d0_pre > 5.0 " | bc ` -eq 1 ]
@@ -189,7 +192,7 @@ cat $OUTPUT | awk '{print($1,$2,$7)}' | sort -n -k 3 >image.cat
 cat newOT.cat refcom3d.cat | column -t >temp #update the refcom3d.cat
 mv temp refcom3d.cat
 cp refcom3d.cat refcom3d_noupdate.cat
-rm -rf newOT.cat
+rm -rf newOT.cat fit.log
 wc image.cat refcom3d_noupdate.cat
 ./xlimit #output is the newOTT.cat   refall_magbin.cat, the letter file contains the magbin and num, which is for the maglimit estimate.
 ls newOTT.cat refall_magbin.cat
@@ -202,11 +205,11 @@ set grid
 set key left
 f(x)=a*x+b
 a=1
-fit [13:5][13:5] f(x) 'newOTT.cat' u 3:6 via a,b  
+fit [12:5][12:5] f(x) 'newOTT.cat' u 3:6 via a,b  
 plot [14:5][14:5]'newOTT.cat' u 3:6 t 'R2',f(x)
 quit
 EOF
-#in the gnuplot, a=1 is aiming to make the fit to be corrected.
+#in the gnuplot, a=1 is aiming to make the correct fit .
 
 aa=`cat fit.log | tail -9 | head -1 | awk '{print($3)}'`
 bb=`cat fit.log | tail -8 | head -1 | awk '{print($3)}'`
@@ -227,8 +230,8 @@ mv image.cat refcom4d.cat
 #========================================
 
 #$3 is the flux in area, area=4 pixel, detect_th is the detection mini-sigma, $6 is the threshold, thus $6/detect_th is the stddev of the background. maglimitSigma=5
-#the sn of the star is that flux/stdev/sqrt(area), 
-#the delta magnitude is that 2.512*log(sn/maglimitSigma)
+#the sn of the star is that sn=flux/stdev/sqrt(area)=$3*DETECT_TH/$6/sqer(area), 
+#the deltamagnitude is that 2.512*log(sn/maglimitSigma)/log(10)
 #the limit magnitude is that the R2 magnitude + deltamagniutde.
 cat  $OUTPUT | awk '{if($8<0.2)print($1,$2,($7*k+xb)+2.512*log($3*DETECT_TH/$6/sqrt(4)/maglimitSigma)/log(10),$7)}' k=$aa xb=$bb DETECT_TH=$DETECT_TH maglimitSigma=$maglimitSigma >refcom_maglimit.cat  # area=4 for aperature phot
 
@@ -242,7 +245,7 @@ do
         i=`echo $j`
 done
 averagelimit=`echo $sum $i | awk '{print($1/$2)}'`
-echo "average for the" $maglimitSigma  " sigma limit R magnitude:" $averagelimit
+echo  $maglimitSigma  " sigma limit R magnitude in average is: " $averagelimit
 echo $averagelimit "  the" $maglimitSigma  " sigma limit R magnitude" >refcom_avermaglimit.cat
 
 #======================================
