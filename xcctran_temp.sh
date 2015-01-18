@@ -28,6 +28,10 @@ DETECT_TH=3
 maglimitSigma=5 
 Num_IdeaCatalog=60000 #the base of max num for the refcom3d.cat
 
+CCDsize=3056
+ejmin=200
+ejmax=`echo $CCDsize | awk '{print($1-200)}'`
+
 ID_CamaraType=`gethead $FITFILE "IMAGEID" | cut -c14-14`
 OUTPUT=`echo $FITFILE | sed 's/\.fit/.fit.sex/'`
 OUTPUT_new=`echo $FITFILE | sed 's/\.fit/.fit.sex_xy/'`
@@ -55,7 +59,7 @@ gnuplot xplot.gn
 
 sex $FITFILE  -c  daofind.sex  -CATALOG_NAME $OUTPUT -DETECT_THRESH $DETECT_TH -ANALYSIS_THRESH $DETECT_TH
 #cat $OUTPUT | awk '{if($4==0) print($1,$2,$3)}' >allres0
-cat $OUTPUT | awk '{print($1,$2,$3)}' >allres0
+cat $OUTPUT | awk '{if($1>ejmin && $1<ejmax && $2>ejmin && $2<ejmax) print($1,$2,$3)}' ejmin=$ejmin ejmax=$ejmax >allres0
 #cat $OUTPUT | sort -n -r -k 3 | awk '{if($4==0 && ($3)-$5/($6)>1000 )print($1,$2,$3)}' | column -t >refcom1d.cat
 #============================================================
         Npixel=`gethead $FITFILE "NAXIS1"`
@@ -131,7 +135,7 @@ cd $DIR_data
 #======================================
 wc $XYfilecctranStand   $XYfilecctranAll
 #======================================
-paste $XYfilecctranAll |  awk '{if($1>0 && $1<3056 && $2>0 && $2<3056 && $6>0) print($1,$2,$6)}' >refcom3d_noupdate0.cat  # R2mag, $5 is R1mag, $6 is R2mag
+paste $XYfilecctranAll |  awk '{if($1>ejmin && $1<ejmax && $2>ejmin && $2<ejmax && $6>0) print($1,$2,$6)}' ejmin=$ejmin ejmax=$ejmax >refcom3d_noupdate0.cat  # R2mag, $5 is R1mag, $6 is R2mag
 #===================================================
 #decrease the number of temp 
 #wc refcom3d_noupdate0.cat
@@ -205,7 +209,7 @@ set grid
 set key left
 f(x)=a*x+b
 a=1
-fit [12:5][12:5] f(x) 'newOTT.cat' u 3:6 via a,b  
+fit [12:7][12:7] f(x) 'newOTT.cat' u 3:6 via a,b  
 plot [14:5][14:5]'newOTT.cat' u 3:6 t 'R2',f(x)
 quit
 EOF
@@ -220,7 +224,7 @@ mv newOTT.cat limitnewOT.cat
 rm -rf fit.log SameStar.cat newOTT.cat
 #=====================================
 
-cat $XYfilecctranStand | awk '{if($1>0 && $2>0 && $1<3056 && $2<3056 && $3>0) print($1,$2,$3)}' | sort -n -r -k 3 | head -1000 >GwacStandall_mag.cat #R1mag, $3 is R1mag, $4 is R2mag
+cat $XYfilecctranStand | awk '{if($1>ejmin && $2>ejmin && $1<ejmax && $2<ejmax && $3>0) print($1,$2,$3)}' ejmin=$ejmin ejmax=$ejmax | sort -n -r -k 3 | head -1000 >GwacStandall_mag.cat #R1mag, $3 is R1mag, $4 is R2mag
 cat $OUTPUT | awk '{print($1,$2,$7*k+xb)}' k=$aa xb=$bb | sort -n -k 3 >image.cat #this magnitude has been standardlized
 date
 ./xCrossImageStand #output is the SameStar.cat
