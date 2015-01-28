@@ -209,14 +209,18 @@ set grid
 set key left
 f(x)=a*x+b
 a=1
-fit [12:7][12:7] f(x) 'newOTT.cat' u 3:6 via a,b  
+fit [13:5][13:5] f(x) 'newOTT.cat' u 3:6 via b  
 plot [14:5][14:5]'newOTT.cat' u 3:6 t 'R2',f(x)
 quit
 EOF
-#in the gnuplot, a=1 is aiming to make the correct fit .
 
-aa=`cat fit.log | tail -9 | head -1 | awk '{print($3)}'`
-bb=`cat fit.log | tail -8 | head -1 | awk '{print($3)}'`
+#in the gnuplot, a=1 is aiming to make the correct fit .
+#cp fit.log fit.log.bak
+aa=1
+bb=`cat fit.log | tail -7 | head -1 | awk '{print($3)}'`
+#when fit above, via a,b,  the values of aa and bb are in the following
+#aa=`cat fit.log | tail -9 | head -1 | awk '{print($3)}'`
+#bb=`cat fit.log | tail -8 | head -1 | awk '{print($3)}'`
 echo "the transformation format is f(x)="$aa"*x+"$bb
 echo "f(x)="$aa"*x+"$bb >imagetrans.cat
 #instrumental magnitude is x, with the f(x), these magnitude could be transfermed to the standard R2 mag.

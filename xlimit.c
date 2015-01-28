@@ -73,16 +73,16 @@ main()
         {
               for(i=0;i<N1;i++)
               {
-		deltax=x1[i]-k1[m];
-		deltay=x2[i]-k2[m];
-		//deltamag=fabs(x3[m]-k3[m]);
-		deltaxy=sqrt(deltax*deltax+deltay*deltay);
-		if(deltaxy<CriRadius)
-//              	if(deltaxy<CriRadius && deltamag<2.0)
+        		deltax=x1[i]-k1[m];
+        		deltay=x2[i]-k2[m];
+        		deltamag=fabs(x3[m]-k3[m]);
+        		deltaxy=sqrt(deltax*deltax+deltay*deltay);
+        		//if(deltaxy<CriRadius)
+               	if(deltaxy<CriRadius && deltamag<2.0)
                 {
-			fprintf(fave,"%.3f %.3f %.3f %.3f %.3f %.3f \n",k1[m],k2[m],k3[m],x1[i],x2[i],x3[i]);
-			break;
-		}
+        			fprintf(fave,"%.3f %.3f %.3f %.3f %.3f %.3f \n",k1[m],k2[m],k3[m],x1[i],x2[i],x3[i]);
+        			break;
+        		}
               }
         }
         fclose(fave);
