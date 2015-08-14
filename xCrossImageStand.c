@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdbool.h>
-#define CriRadius 2.0
+#define CriRadius 1.0
 #define MAXSIZE 800000
 float   x1[MAXSIZE],x2[MAXSIZE],x3[MAXSIZE],k1[MAXSIZE],k2[MAXSIZE],k3[MAXSIZE];
 

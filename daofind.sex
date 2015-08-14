@@ -35,7 +35,7 @@ PARAMETERS_NAME  daofind.param  # name of the file containing catalog contents
 #------------------------------- Extraction ----------------------------------
  
 DETECT_TYPE      CCD            # CCD (linear) or PHOTO (with gamma correction)
-DETECT_MINAREA   4              # minimum number of pixels above threshold
+DETECT_MINAREA   2              # minimum number of pixels above threshold
 #DETECT MAXAREA   50             # maximum number of pixels above threshold
 THRESH_TYPE 	 RELATIVE       # Relative to background RMS
 				# In ADU’s (set THRESH TYPE ABSOLUTE) e.g. DETECT THRESH 1.2
@@ -50,9 +50,9 @@ FILTER           Y              # apply filter for detection (Y or N)?
 FILTER_NAME 	 gauss_1.5_3x3.conv
  
 DEBLEND_NTHRESH  32             # Number of deblending sub-thresholds
-DEBLEND_MINCONT  0.0001          	# Minimum contrast parameter for deblending,图像目标中，最暗目标流量与最亮目标流量的最小比。对亮星周围暗星的探测很有用。
+DEBLEND_MINCONT  0.000001          	# Minimum contrast parameter for deblending,图像目标中，最暗目标流量与最亮目标流量的最小比。对亮星周围暗星的探测很有用。
 
-CLEAN            Y              # Clean spurious detections? (Y or N)?
+CLEAN            N              # Clean spurious detections? (Y or N)?
 CLEAN_PARAM      0.1            # Cleaning efficiency，取值范围是0.1-10，选择合适的值可以减少假信号的比例。
  
 MASK_TYPE        CORRECT        # type of detection MASKing: can be one of

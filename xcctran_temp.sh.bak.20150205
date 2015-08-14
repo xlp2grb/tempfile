@@ -24,21 +24,13 @@ Accfile=$3
 FITFILE=$4
 skyfield=$5
 
-templimitmagfile=$HOME/tempfile/reddir/templimitmag.log
-if test ! -r $templimitmagfile
-then
-    touch $templimitmagfile
-fi
-
-
-
-DETECT_TH=2 
+DETECT_TH=3 
 maglimitSigma=5 
 Num_IdeaCatalog=60000 #the base of max num for the refcom3d.cat
 
 CCDsize=3056
-ejmin=20
-ejmax=`echo $CCDsize | awk '{print($1-ejmin)}' ejmin=$ejmin  ` 
+ejmin=200
+ejmax=`echo $CCDsize | awk '{print($1-200)}'`
 
 ID_CamaraType=`gethead $FITFILE "IMAGEID" | cut -c14-14`
 OUTPUT=`echo $FITFILE | sed 's/\.fit/.fit.sex/'`
@@ -143,7 +135,7 @@ cd $DIR_data
 #======================================
 wc $XYfilecctranStand   $XYfilecctranAll
 #======================================
-cat $XYfilecctranAll |  awk '{if($1>ejmin && $1<ejmax && $2>ejmin && $2<ejmax && $6>0) print($1,$2,$6)}' ejmin=$ejmin ejmax=$ejmax >refcom3d_noupdate0.cat  # R2mag, $5 is R1mag, $6 is R2mag
+paste $XYfilecctranAll |  awk '{if($1>ejmin && $1<ejmax && $2>ejmin && $2<ejmax && $6>0) print($1,$2,$6)}' ejmin=$ejmin ejmax=$ejmax >refcom3d_noupdate0.cat  # R2mag, $5 is R1mag, $6 is R2mag
 #===================================================
 #decrease the number of temp 
 #wc refcom3d_noupdate0.cat
@@ -200,17 +192,13 @@ cat $OUTPUT | awk '{print($1,$2,$7)}' | sort -n -k 3 >image.cat
 #tail -1 image.cat
 #sleep 5
 #cp image.cat refcom3d.cat ../
-
-#=====================
-#modified by xlp at 20150813
-#./xCrossImageRefcom3d #output is the newOT.cat
-#cat newOT.cat refcom3d.cat | column -t >temp #update the refcom3d.cat
-#mv temp refcom3d.cat
-#cp refcom3d.cat refcom3d_noupdate.cat
-#rm -rf newOT.cat fit.log
-#wc image.cat refcom3d_noupdate.cat
-
-./xlimit #output is the newOTT.cat   refall_magbin.cat, the letter file contains the magbin and num, which is for the maglimit estimate at the code of xmatch.sh.
+./xCrossImageRefcom3d #output is the newOT.cat
+cat newOT.cat refcom3d.cat | column -t >temp #update the refcom3d.cat
+mv temp refcom3d.cat
+cp refcom3d.cat refcom3d_noupdate.cat
+rm -rf newOT.cat fit.log
+wc image.cat refcom3d_noupdate.cat
+./xlimit #output is the newOTT.cat   refall_magbin.cat, the letter file contains the magbin and num, which is for the maglimit estimate.
 ls newOTT.cat refall_magbin.cat
 gnuplot << EOF
 set term png
@@ -240,24 +228,13 @@ mv newOTT.cat limitnewOT.cat
 rm -rf fit.log SameStar.cat newOTT.cat
 #=====================================
 
-cat $XYfilecctranStand | awk '{if($1>ejmin && $2>ejmin && $1<ejmax && $2<ejmax && $6>0) print($1,$2,$6)}' ejmin=$ejmin ejmax=$ejmax | sort -n -r -k 3 | head -1000 >GwacStandall_mag.cat #R2mag, $5 is R1mag, $6 is R2mag
-cat $OUTPUT | awk '{if($7<99.0 && $8<0.3)print($1,$2,$7*k+xb)}' k=$aa xb=$bb | sort -n -k 3 >image.cat #this magnitude has been standardlized
-
-#===================
-#modified by xlp at 20150813
-#image.cat is the file after the magnitude calibration to usnob1.0 Rmag,
-#after the cat the two files, the magnitudes and the coordinates are completes.
-cat image.cat refcom3d.cat >refcom3d_noupdate.cat
-cp refcom3d_noupdate.cat refcom3d.cat
-cp image.cat refcom4d.cat
-#===================
-head -20000 refcom4d.cat >image.cat
-./xCrossImageStand #output is the SameStar.cat, image.cat as one input file has been standardlized. 
-#modified by xlp at 20150813
+cat $XYfilecctranStand | awk '{if($1>ejmin && $2>ejmin && $1<ejmax && $2<ejmax && $3>0) print($1,$2,$3)}' ejmin=$ejmin ejmax=$ejmax | sort -n -r -k 3 | head -1000 >GwacStandall_mag.cat #R1mag, $3 is R1mag, $4 is R2mag
+cat $OUTPUT | awk '{print($1,$2,$7*k+xb)}' k=$aa xb=$bb | sort -n -k 3 >image.cat #this magnitude has been standardlized
 date
-#cat SameStar.cat | awk '{print($5,$6,$7*k+xb)}' k=$aa xb=$bb  >GwacStandall_mag.cat #flux calibration file
-cat SameStar.cat | awk '{print($5,$6,$7)}' >GwacStandall_mag.cat #flux calibration file
-rm -rf image.cat 
+./xCrossImageStand #output is the SameStar.cat
+date
+cat SameStar.cat | awk '{print($5,$6,$7*k+xb)}' k=$aa xb=$bb  >GwacStandall_mag.cat #flux calibration file
+mv image.cat refcom4d.cat
 #========================================
 
 #$3 is the flux in area, area=4 pixel, detect_th is the detection mini-sigma, $6 is the threshold, thus $6/detect_th is the stddev of the background. maglimitSigma=5
@@ -267,22 +244,18 @@ rm -rf image.cat
 cat  $OUTPUT | awk '{if($8<0.2)print($1,$2,($7*k+xb)+2.512*log($3*DETECT_TH/$6/sqrt(4)/maglimitSigma)/log(10),$7)}' k=$aa xb=$bb DETECT_TH=$DETECT_TH maglimitSigma=$maglimitSigma >refcom_maglimit.cat  # area=4 for aperature phot
 
 #=========================
-#sum=0
-#for R2limitmag in `cat refcom_maglimit.cat | awk '{print($3)}'`
-#do
-#        sum1=`echo $sum $R2limitmag | awk '{print($1+$2)}'`
-#        sum=`echo $sum1`
-#        j=`echo $i | awk '{print($1+1)}'`
-#        i=`echo $j`
-#done
-#averagelimit=`echo $sum $i | awk '{print($1/$2)}'`
-rm newav.cat
-./xavmaglimit
-averagelimit=`cat newav.cat`
+sum=0
+for R2limitmag in `cat refcom_maglimit.cat | awk '{print($3)}'`
+do
+        sum1=`echo $sum $R2limitmag | awk '{print($1+$2)}'`
+        sum=`echo $sum1`
+        j=`echo $i | awk '{print($1+1)}'`
+        i=`echo $j`
+done
+averagelimit=`echo $sum $i | awk '{print($1/$2)}'`
 echo  $maglimitSigma  " sigma limit R magnitude in average is: " $averagelimit
 echo $averagelimit "  the" $maglimitSigma  " sigma limit R magnitude" >refcom_avermaglimit.cat
-filenamefortemp=`gethead $FITFILE "IMCMB003"` 
-echo $filenamefortemp $skyfield $averagelimit " the $maglimitSigma sigma limit R magnitude" | column -t >>$templimitmagfile  
+
 #======================================
 #date >time1
 #month=`cat time1 | awk '{print($2)}'`
