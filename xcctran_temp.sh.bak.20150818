@@ -31,8 +31,7 @@ then
 fi
 
 
-xdefine(  )
-{
+
 DETECT_TH=2 
 maglimitSigma=5 
 Num_IdeaCatalog=60000 #the base of max num for the refcom3d.cat
@@ -47,63 +46,11 @@ OUTPUT_new=`echo $FITFILE | sed 's/\.fit/.fit.sex_xy/'`
 skyfield_cat=`echo $skyfield"_update.cat"`
 XYfilecctranAll=`echo $RaDecfileAll"_allxy"`
 XYfilecctranStand=`echo $RaDecfileStand"_standxy"`
-imagetransfluxCali==`echo $FITFILE | sed 's/\.fit/.fit.imagetransfluxCali/'`
 
 rm -rf $XYfilecctranAll $XYfilecctranStand refcom_subbg.fit refcom1d.cat refcom2d.cat
 
 echo $RaDecfileAll $RaDecfileStand $Accfile $FITFILE $skyfield $Initial_limit $skyfield_cat $ID_CamaraType  
-}
 
-xMultiAreaFluxCali ( )
-{
-            Nbstar=4 #set 4*4 regions to extract the bright stars to match each other
-            Ng=0
-	    xNPixel=3056
-	    yNPixel=3056
-            xNb=`echo $xNpixel $Nbstar | awk '{print(int($1/$2))}'`
-            yNb=`echo $yNpixel $Nbstar | awk '{print(int($1/$2))}'`
-            for((i=$Ng;i<($Nbstar-$Ng);i++))
-            do
-                for((j=$Ng;j<($Nbstar-$Ng);j++))
-                do
-                    cat newOTT.cat | awk '{if( (xnb*i)<$1 && $1<=(xnb*(i+1))  &&    (ynb*j)<$2 && $2<=(ynb*(j+1))) print($1,$2,$3,$4,$5,$6)}' i=$i j=$j xnb=$xNb ynb=$yNb  column -t >>MultiAreaFluxCali_$i$j
-
-gnuplot << EOF
-set term png
-#set output "$flux_calibration_png"
-set xlabel "mag in new image"
-set ylabel "mag in temp image"
-set grid
-set key left
-f(x)=a*x+b
-a=1
-fit [13:5][13:5] f(x) 'MultiAreaFluxCali_$i$j' u 6:3 via b  
-#plot [14:5][14:5]'MultiAreaFluxCali_$i$j' u 6:3 t 'mag-mag',f(x)
-quit
-EOF
-
-#in the gnuplot, a=1 is aiming to make the correct fit .
-#cp fit.log fit.log.bak
-#when fit above with only b
-aa=1
-bb=`cat fit.log | tail -7 | head -1 | awk '{print($3)}'`
-
-#when fit above, via a,b,  the values of aa and bb are in the following
-#aa=`cat fit.log | tail -9 | head -1 | awk '{print($3)}'`
-#bb=`cat fit.log | tail -8 | head -1 | awk '{print($3)}'`
-echo "the transformation format is f(x)="$aa"*x+"$bb
-
-Xcenter=`echo $xNb $i | awk '{print($1*(1+2*$2)/2)}'`
-Ycenter=`echo $yNb $j | awk '{print($1*(1+2*$2)/2)}'`
-
-echo "f(x)= $aa *x+ $bb  $Xcenter  $Ycenter" >>$imagetransfluxCali
-        done
-    done
-}
-
-
-xchecksystem (  )
-{
 if [ "$ID_CamaraType"x = "M"x ]
 then
 	Initial_limit=14.0 # the upper limit for mini-gwac when get the catalog from USNO B1.0 by xGetCatalog.sh
@@ -117,20 +64,13 @@ fi
 #=====================================
 gnuplot xplot.gn
 #=====================================
-}
 
-xgetstars(  )
-{
 sex $FITFILE  -c  daofind.sex  -CATALOG_NAME $OUTPUT -DETECT_THRESH $DETECT_TH -ANALYSIS_THRESH $DETECT_TH
 #cat $OUTPUT | awk '{if($4==0) print($1,$2,$3)}' >allres0
 cat $OUTPUT | awk '{if($1>ejmin && $1<ejmax && $2>ejmin && $2<ejmax) print($1,$2,$3)}' ejmin=$ejmin ejmax=$ejmax >allres0
 #cat $OUTPUT | sort -n -r -k 3 | awk '{if($4==0 && ($3)-$5/($6)>1000 )print($1,$2,$3)}' | column -t >refcom1d.cat
 #============================================================
-}
-
-xget1and2dcatalog(  )
-{
-    Npixel=`gethead $FITFILE "NAXIS1"`
+        Npixel=`gethead $FITFILE "NAXIS1"`
         if [ $Npixel -gt 1024 ] # greater than 1k
         then
                 Nbstar=10
@@ -166,10 +106,7 @@ rm -rf refcom2d.cat
         #for second geomap with tolerence
 #======================================
 cp refcom2d.cat GwacStandall.cat
-}
 
-xcctranRA2xy(  )
-{
 #======================================================
 #echo $RaDecfileAll $XYfilecctranAll
 cd $HOME/iraf
@@ -205,11 +142,6 @@ cp -f login.cl.old login.cl
 cd $DIR_data
 #======================================
 wc $XYfilecctranStand   $XYfilecctranAll
-}
-
-
-xfilteralltemp(  )
-{
 #======================================
 cat $XYfilecctranAll |  awk '{if($1>ejmin && $1<ejmax && $2>ejmin && $2<ejmax && $6>0) print($1,$2,$6)}' ejmin=$ejmin ejmax=$ejmax >refcom3d_noupdate0.cat  # R2mag, $5 is R1mag, $6 is R2mag
 #===================================================
@@ -259,10 +191,7 @@ echo "Final limit from Astronomy catalog is ( $Initial_limit  -  $deltamag_decre
 #echo "decrease mag: "$deltamag_decrease
 #wc refcom3d_noupdate0.cat 
 #=================================================
-}
 
-xfluxcalibration(  )
-{
 cp refcom3d_noupdate0.cat refcom3d.cat
 cat $OUTPUT | awk '{print($1,$2,$7)}' | sort -n -k 3 >image.cat
 #wc refcom3d.cat 
@@ -283,10 +212,6 @@ cat $OUTPUT | awk '{print($1,$2,$7)}' | sort -n -k 3 >image.cat
 
 ./xlimit #output is the newOTT.cat   refall_magbin.cat, the letter file contains the magbin and num, which is for the maglimit estimate at the code of xmatch.sh.
 ls newOTT.cat refall_magbin.cat
-
-xMultiAreaFluxCali
-wait
-
 gnuplot << EOF
 set term png
 set output "white-standard.png"
@@ -314,10 +239,7 @@ echo "f(x)="$aa"*x+"$bb >imagetrans.cat
 mv newOTT.cat limitnewOT.cat
 rm -rf fit.log SameStar.cat newOTT.cat
 #=====================================
-}
 
-xmkfluxcali_catalog(  )
-{
 cat $XYfilecctranStand | awk '{if($1>ejmin && $2>ejmin && $1<ejmax && $2<ejmax && $6>0) print($1,$2,$6)}' ejmin=$ejmin ejmax=$ejmax | sort -n -r -k 3 | head -1000 >GwacStandall_mag.cat #R2mag, $5 is R1mag, $6 is R2mag
 cat $OUTPUT | awk '{if($7<99.0 && $8<0.3)print($1,$2,$7*k+xb)}' k=$aa xb=$bb | sort -n -k 3 >image.cat #this magnitude has been standardlized
 
@@ -330,7 +252,6 @@ cp refcom3d_noupdate.cat refcom3d.cat
 cp image.cat refcom4d.cat
 #===================
 head -20000 refcom4d.cat >image.cat
-#input is GwacStandall_mag.cat   image.cat 
 ./xCrossImageStand #output is the SameStar.cat, image.cat as one input file has been standardlized. 
 #modified by xlp at 20150813
 date
@@ -338,10 +259,7 @@ date
 cat SameStar.cat | awk '{print($5,$6,$7)}' >GwacStandall_mag.cat #flux calibration file
 rm -rf image.cat 
 #========================================
-}
 
-xlimitmagcalculation(  )
-{
 #$3 is the flux in area, area=4 pixel, detect_th is the detection mini-sigma, $6 is the threshold, thus $6/detect_th is the stddev of the background. maglimitSigma=5
 #the sn of the star is that sn=flux/stdev/sqrt(area)=$3*DETECT_TH/$6/sqer(area), 
 #the deltamagnitude is that 2.512*log(sn/maglimitSigma)/log(10)
@@ -365,10 +283,14 @@ echo  $maglimitSigma  " sigma limit R magnitude in average is: " $averagelimit
 echo $averagelimit "  the" $maglimitSigma  " sigma limit R magnitude" >refcom_avermaglimit.cat
 filenamefortemp=`gethead $FITFILE "IMCMB003"` 
 echo $filenamefortemp $skyfield $averagelimit " the $maglimitSigma sigma limit R magnitude" | column -t >>$templimitmagfile  
-}
-
-xcopyresult(  )
-{
+#======================================
+#date >time1
+#month=`cat time1 | awk '{print($2)}'`
+#day=`cat time1 | awk '{print($3)}'`
+#timex=`cat time1 | awk '{print($4)}'`
+#newname3d=`echo "refcom3d.cat"_$month"_"$day"_"$timex`
+#newname1d=`echo "refcom1d.cat"_$month"_"$day"_"$timex`
+#standobj=`echo "GwacStandall.cat"_$month"_"$day"_"$timex`
 
 touch noupdate.flag
 mkdir $result_dir"/"$skyfield
@@ -377,25 +299,3 @@ mv white-standard.png limitnewOT.cat refcom3d_noupdate*.cat imagetrans.cat  noup
 wait
 
 rm -rf time1 white-standard.png refstand.txt_standxy *.png imagetrans.cat  refcom_maglimit.cat refcom.fit.sex noupdate.flag refall_magbin.cat refstand.txt refcom2d.cat bak.fit GwacStandall.cat  refcom_avermaglimit.cat GwacStandall_mag.cat refall.txt refall.txt_allxy refcom.acc allres0 refcom4d.cat 
-}
-
-xdefine 
-wait
-xchecksystem
-wait
-xgetstars
-wait
-xget1and2dcatalog
-wait
-xcctranRA2xy
-wait
-xfilteralltemp
-wait
-xfluxcalibration
-wait
-xmkfluxcali_catalog
-wait
-xlimitmagcalculation
-wait
-xcopyresult
-wait
